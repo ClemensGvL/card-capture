@@ -164,14 +164,14 @@
 
   // settings
   $("btnSettings").onclick = () => {
-    $("agentUrl").value = localStorage.getItem("agentUrl") || "";
-    $("agentToken").value = localStorage.getItem("agentToken") || "";
+    $("ghRepo").value = localStorage.getItem("ghRepo") || "ClemensGvL/card-captures-data";
+    $("ghToken").value = localStorage.getItem("ghToken") || "";
     show("settings");
   };
   $("btnBack").onclick = () => show("home");
   function saveSettings() {
-    localStorage.setItem("agentUrl", $("agentUrl").value.trim());
-    localStorage.setItem("agentToken", $("agentToken").value.trim());
+    localStorage.setItem("ghRepo", $("ghRepo").value.trim());
+    localStorage.setItem("ghToken", $("ghToken").value.trim());
   }
   $("btnSaveSettings").onclick = () => { saveSettings(); show("home"); };
   $("btnTest").onclick = async () => {
@@ -179,7 +179,7 @@
     $("testResult").textContent = "Testing…";
     try {
       const h = await SYNC.health();
-      $("testResult").textContent = "OK — agent reachable. Schema approved: " + h.schema_approved;
+      $("testResult").textContent = "OK — connected to " + h.repo;
     } catch (e) {
       $("testResult").textContent = "Failed: " + e.message;
     }

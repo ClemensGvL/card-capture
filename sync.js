@@ -1,64 +1,72 @@
-// Drains the IndexedDB queue to the local sync agent over HTTPS.
-// On a confirmed per-item merge, the item is removed from the queue.
+// Pushes queued captures to a PRIVATE GitHub repo (the always-on relay).
+// One capture = one new file under captures/ — creates never need a SHA, so
+// pushes never conflict. The laptop merges these into Excel one-way, later.
+// The GitHub token lives only on this phone (Settings), never in the app shell.
 const SYNC = (() => {
-  function agentUrl() { return (localStorage.getItem("agentUrl") || "").replace(/\/+$/, ""); }
-  function token() { return localStorage.getItem("agentToken") || ""; }
-  function headers(extra) {
-    const h = Object.assign({}, extra || {});
+  const API = "https://api.github.com";
+  function repo() { return (localStorage.getItem("ghRepo") || "ClemensGvL/card-captures-data").trim(); }
+  function token() { return (localStorage.getItem("ghToken") || "").trim(); }
+
+  function ghHeaders() {
     const t = token();
-    if (t) h["X-Sync-Token"] = t;
-    return h;
+    if (!t) throw new Error("No GitHub token set (Settings).");
+    return { "Authorization": "Bearer " + t, "Accept": "application/vnd.github+json" };
   }
 
-  function toPayload(rec) {
+  // UTF-8 safe base64 for JSON payloads.
+  function b64utf8(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  async function putFile(path, base64content, message) {
+    const r = await fetch(`${API}/repos/${repo()}/contents/${path}`, {
+      method: "PUT",
+      headers: Object.assign(ghHeaders(), { "Content-Type": "application/json" }),
+      body: JSON.stringify({ message, content: base64content }),
+    });
+    // 201 created. 422 = file already exists (already synced) -> treat as done.
+    if (r.status === 201 || r.status === 422) return true;
+    const detail = await r.text().catch(() => "");
+    throw new Error(`GitHub ${r.status}: ${detail.slice(0, 140)}`);
+  }
+
+  function metaOf(rec) {
     return {
-      id: rec.id,
-      name: rec.name || null,
-      last_name: rec.last_name || null,
-      email: rec.email || null,
-      phone: rec.phone || null,
-      company: rec.company || null,
-      title: rec.title || null,
-      how_met: rec.how_met || null,
-      date_met: rec.date_met || null,
-      context_note: rec.context_note || null,
-      event: rec.event || null,
-      tags: rec.event || null,
-      captured_at: rec.capturedAt || null,
-      card_image_base64: rec.cardImageDataUrl || null,
+      id: rec.id, name: rec.name || "", last_name: rec.last_name || "",
+      email: rec.email || "", phone: rec.phone || "", company: rec.company || "",
+      title: rec.title || "", how_met: rec.how_met || "", date_met: rec.date_met || "",
+      context_note: rec.context_note || "", event: rec.event || "",
+      tags: rec.event || "", captured_at: rec.capturedAt || "",
+      card_image: rec.cardImageDataUrl ? `captures/img/${rec.id}.jpg` : "",
     };
   }
 
   return {
     async health() {
-      const base = agentUrl();
-      if (!base) throw new Error("No agent URL set (Settings).");
-      const r = await fetch(base + "/health", { method: "GET", headers: headers() });
-      if (!r.ok) throw new Error("Agent returned " + r.status);
-      return r.json();
+      const r = await fetch(`${API}/repos/${repo()}`, { headers: ghHeaders() });
+      if (r.status === 200) return { ok: true, repo: repo() };
+      if (r.status === 401) throw new Error("Token rejected (401). Check the token.");
+      if (r.status === 404) throw new Error("Repo not found / token lacks access: " + repo());
+      throw new Error("GitHub returned " + r.status);
     },
     async run() {
-      const base = agentUrl();
-      if (!base) throw new Error("No agent URL set (Settings).");
       const items = await DB.all();
       if (!items.length) return { synced: 0, remaining: 0 };
-      const r = await fetch(base + "/sync", {
-        method: "POST",
-        headers: headers({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ captures: items.map(toPayload) }),
-      });
-      if (!r.ok) {
-        const detail = await r.text().catch(() => "");
-        throw new Error("Sync failed (" + r.status + "): " + detail);
+      let synced = 0;
+      for (const rec of items) {
+        // Image first (so the JSON's reference is valid once present).
+        if (rec.cardImageDataUrl) {
+          const b64 = rec.cardImageDataUrl.includes(",")
+            ? rec.cardImageDataUrl.split(",", 2)[1] : rec.cardImageDataUrl;
+          await putFile(`captures/img/${rec.id}.jpg`, b64, `card image ${rec.id}`);
+        }
+        await putFile(`captures/${rec.capturedAt || ""}-${rec.id}.json`,
+          b64utf8(JSON.stringify(metaOf(rec), null, 2)), `capture ${rec.id}`);
+        await DB.remove(rec.id);
+        synced++;
       }
-      const data = await r.json();
-      const ok = new Set();
-      for (const res of (data.results || [])) {
-        if (["merged", "updated", "duplicate"].includes(res.status)) ok.add(res.id);
-      }
-      for (const id of ok) await DB.remove(id);
       const remaining = await DB.count();
-      return { synced: ok.size, remaining };
+      return { synced, remaining };
     },
   };
 })();

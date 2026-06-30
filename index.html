@@ -80,12 +80,12 @@
 
   <!-- SETTINGS -->
   <section id="settings" class="screen">
-    <label>Sync agent URL (your laptop)</label>
-    <input id="agentUrl" placeholder="https://your-laptop.tailnet.ts.net" inputmode="url" autocapitalize="off">
-    <p class="hint">Your laptop's Tailscale address (works from any network) or its LAN address at home. Used only when you tap “Sync now”.</p>
-    <label>Sync token</label>
-    <input id="agentToken" placeholder="paste the SYNC_TOKEN from your .env" autocapitalize="off">
-    <p class="hint">Must match SYNC_TOKEN in the agent's .env. Stored only on this phone.</p>
+    <label>GitHub data repo (private)</label>
+    <input id="ghRepo" placeholder="ClemensGvL/card-captures-data" autocapitalize="off">
+    <p class="hint">The private repo captures are pushed to. Default is fine.</p>
+    <label>GitHub token</label>
+    <input id="ghToken" placeholder="github_pat_… (fine-grained, this repo only)" autocapitalize="off">
+    <p class="hint">A fine-grained token with Contents: read & write on that repo only. Stored on this phone alone — never in the app. Revoke it on GitHub if you lose the phone.</p>
     <div class="stack" style="margin-top:18px">
       <button class="primary" id="btnSaveSettings">Save</button>
       <button class="ghost" id="btnTest">Test connection</button>
