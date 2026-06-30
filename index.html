@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b5cff">
+<title>Card Capture</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="vendor/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root { --blue:#0b5cff; --bg:#0e1116; --card:#171b22; --line:#2a3140; --txt:#e8edf4; --muted:#94a3b8; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font:17px/1.4 -apple-system,system-ui,sans-serif; background:var(--bg); color:var(--txt); }
+  header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); }
+  header h1 { font-size:18px; margin:0; }
+  .badge { background:var(--blue); color:#fff; border-radius:999px; padding:4px 12px; font-size:14px; font-weight:600; }
+  .badge.zero { background:#222a36; color:var(--muted); }
+  main { padding:16px; max-width:560px; margin:0 auto; }
+  .screen { display:none; }
+  .screen.active { display:block; }
+  button { font:inherit; border:0; border-radius:14px; padding:16px; width:100%; cursor:pointer; }
+  .primary { background:var(--blue); color:#fff; font-weight:700; }
+  .ghost { background:var(--card); color:var(--txt); border:1px solid var(--line); }
+  .row { display:flex; gap:10px; }
+  .row > * { flex:1; }
+  label { display:block; font-size:13px; color:var(--muted); margin:14px 0 6px; }
+  input, textarea { width:100%; padding:14px; font:inherit; background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:12px; }
+  textarea { min-height:90px; resize:vertical; }
+  .hint { color:var(--muted); font-size:13px; margin-top:8px; }
+  .stack > * + * { margin-top:10px; }
+  #preview { width:100%; border-radius:12px; margin-top:12px; display:none; }
+  .ocrnote { font-size:13px; color:var(--muted); min-height:18px; margin-top:8px; }
+  .settings-link { color:var(--muted); font-size:14px; text-decoration:underline; background:none; width:auto; padding:6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Card Capture</h1>
+  <span id="badge" class="badge zero">0 to sync</span>
+</header>
+
+<main>
+  <!-- HOME -->
+  <section id="home" class="screen active">
+    <div class="stack">
+      <button class="primary" id="btnCard">📷 Capture a card</button>
+      <button class="ghost" id="btnNoCard">⌨️ No card (paste / type)</button>
+      <button class="ghost" id="btnSync">🔄 Sync now</button>
+      <p class="hint" id="syncStatus"></p>
+      <button class="settings-link" id="btnSettings">Settings</button>
+    </div>
+  </section>
+
+  <!-- CONFIRM (single screen) -->
+  <section id="confirm" class="screen">
+    <input id="file" type="file" accept="image/*" capture="environment" style="display:none">
+    <img id="preview" alt="card">
+    <div class="ocrnote" id="ocrnote"></div>
+    <div class="row">
+      <div><label>First name</label><input id="f_name"></div>
+      <div><label>Last name</label><input id="f_last"></div>
+    </div>
+    <label>Email (primary key)</label><input id="f_email" type="email" inputmode="email" autocapitalize="off">
+    <div class="row">
+      <div><label>Phone</label><input id="f_phone" inputmode="tel"></div>
+      <div><label>Title</label><input id="f_title"></div>
+    </div>
+    <label>Company / Organisation</label><input id="f_company">
+    <label>How / where we met</label><input id="f_howmet" placeholder="e.g. Rooftop AI meetup">
+    <label>Context dump (10s — what they do, why they matter)</label>
+    <textarea id="f_context" placeholder="Talk fast — anything that helps the name stick."></textarea>
+    <div class="row"><div><label>Event / tag (optional)</label><input id="f_event"></div></div>
+    <div class="stack" style="margin-top:18px">
+      <button class="primary" id="btnConfirm">✓ Save to queue</button>
+      <button class="ghost" id="btnCancel">Cancel</button>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="settings" class="screen">
+    <label>Sync agent URL (your laptop, HTTPS)</label>
+    <input id="agentUrl" placeholder="https://your-laptop.local:8765" inputmode="url" autocapitalize="off">
+    <p class="hint">Set this to the address your laptop sync agent prints on startup. Used only when you tap “Sync now”.</p>
+    <div class="stack" style="margin-top:18px">
+      <button class="primary" id="btnSaveSettings">Save</button>
+      <button class="ghost" id="btnTest">Test connection</button>
+      <p class="hint" id="testResult"></p>
+      <button class="ghost" id="btnBack">Back</button>
+    </div>
+  </section>
+</main>
+
+<script src="vendor/tesseract.min.js" onerror="window.__noOCR=true"></script>
+<script src="db.js"></script>
+<script src="sync.js"></script>
+<script src="app.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+</script>
+</body>
+</html>
