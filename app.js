@@ -18,30 +18,68 @@
     b.classList.toggle("zero", n === 0);
   }
 
-  // --- naive business-card parser ---------------------------------------------
-  function parseCard(text) {
-    const lines = text.split(/\n/).map((l) => l.trim()).filter(Boolean);
-    const out = { email: "", phone: "", name: "", last: "", company: "", title: "" };
-    const emailRe = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-    const phoneRe = /(\+?\d[\d\s().-]{6,}\d)/;
-    const titleRe = /(manager|director|engineer|officer|economist|founder|ceo|cto|cfo|analyst|advisor|consultant|head|lead|professor|partner|associate|president|chief|minister)/i;
-    for (const l of lines) {
-      if (!out.email) { const m = l.match(emailRe); if (m) out.email = m[0].toLowerCase(); }
-      if (!out.phone) { const m = l.match(phoneRe); if (m && (m[0].replace(/\D/g, "").length >= 7)) out.phone = m[0].trim(); }
-      if (!out.title && titleRe.test(l) && l.length < 60) out.title = l;
+  // --- business-card parser ---------------------------------------------------
+  // Org / title keyword sets, reused for name-exclusion and field-picking.
+  const ORG_RE = /(inc\.?|llp|llc|gmbh|ltd\.?|group|bank|university|capital|partners|corp\.?|company|fund|associates|department|ministry|affairs|treasury|division|office|institute|agency|council|bureau|holdings|ventures|foundation|trust)/i;
+  const TITLE_RE = /(manager|director|engineer|officer|economist|founder|ceo|cto|cfo|analyst|advisor|adviser|consultant|head|lead|professor|partner|associate|president|chief|minister|secretary|counsel|specialist|coordinator|administrator|researcher|scientist|attorney|vice)/i;
+
+  // Pull text lines WITH their pixel height from Tesseract's geometry, so we can
+  // tell the name (biggest text) from the org/subtitle. Falls back to plain text.
+  function linesWithHeight(data) {
+    const out = [];
+    if (data && data.blocks && data.blocks.length) {
+      data.blocks.forEach((b) => (b.paragraphs || []).forEach((p) => (p.lines || []).forEach((l) => {
+        const t = (l.text || "").trim();
+        const bb = l.bbox || {};
+        if (t) out.push({ text: t, h: (bb.y1 - bb.y0) || 0 });
+      })));
     }
-    // Name guess: first short line with no digits/@ and looks like a person.
-    const nameLine = lines.find((l) => !/[@\d]/.test(l) && l.split(/\s+/).length <= 4 && /^[A-Za-zÀ-ÿ.'-]/.test(l));
-    if (nameLine) {
-      const parts = nameLine.split(/\s+/);
+    if (!out.length && data && data.text) {
+      data.text.split(/\n/).forEach((t) => { t = t.trim(); if (t) out.push({ text: t, h: 0 }); });
+    }
+    return out;
+  }
+
+  function looksLikeName(t) {
+    if (/[@\d]/.test(t)) return false;
+    const words = t.split(/\s+/);
+    if (words.length < 1 || words.length > 4) return false;
+    if (ORG_RE.test(t) || TITLE_RE.test(t)) return false;
+    return /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.'’-]*(\s+[A-Za-zÀ-ÿ().'’-]+){0,3}$/.test(t);
+  }
+
+  function parseCardData(data) {
+    const lines = linesWithHeight(data);
+    const fullText = lines.map((l) => l.text).join("\n");
+    const out = { email: "", phone: "", name: "", last: "", company: "", title: "" };
+
+    // Email: try as-is, then with whitespace stripped (OCR sprinkles spaces).
+    const emailRe = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+    let m = fullText.match(emailRe) || fullText.replace(/\s+/g, "").match(emailRe);
+    if (m) out.email = m[0].toLowerCase();
+
+    // Phone: longest digit run that looks like a real number.
+    const phones = fullText.match(/\+?[\d][\d\s().\-/]{6,}\d/g) || [];
+    const best = phones.map((p) => p.trim()).filter((p) => p.replace(/\D/g, "").length >= 7)
+      .sort((a, b) => b.replace(/\D/g, "").length - a.replace(/\D/g, "").length)[0];
+    if (best) out.phone = best;
+
+    // Name: the biggest name-ish line (font size beats reading order).
+    const nameCand = lines.filter((l) => looksLikeName(l.text)).sort((a, b) => b.h - a.h)[0];
+    if (nameCand) {
+      let parts = nameCand.text.split(/\s+/);
+      if (/^(dr|mr|mrs|ms|mx|prof|sir|dame|rev)\.?$/i.test(parts[0])) parts = parts.slice(1);
       out.name = parts[0] || "";
       out.last = parts.slice(1).join(" ");
     }
-    // Company guess: a line with Inc/LLP/GmbH/Ltd/Bank/Group, else the longest non-name line.
-    const compRe = /(inc\.?|llp|llc|gmbh|ltd\.?|group|bank|university|capital|partners|corp\.?|company|fund|associates)/i;
-    out.company = lines.find((l) => compRe.test(l) && l !== nameLine) || "";
-    // Derive email from domain hint if email missing? No — never invent data.
-    return out;
+    // Title: first line with a role keyword (not the name).
+    const titleLine = lines.find((l) => l.text !== (nameCand && nameCand.text) && TITLE_RE.test(l.text) && l.text.length < 60);
+    if (titleLine) out.title = titleLine.text;
+    // Company: biggest org-ish line (not the name/title).
+    const compCand = lines.filter((l) => ORG_RE.test(l.text) && l.text !== (nameCand && nameCand.text) && l.text !== (titleLine && titleLine.text))
+      .sort((a, b) => b.h - a.h)[0];
+    if (compCand) out.company = compCand.text;
+    return out;  // never invent data — empty stays empty
   }
 
   let currentImageDataUrl = null;
@@ -108,14 +146,14 @@
           }
         },
       });
-      const { data } = await worker.recognize(dataUrl);
+      const { data } = await worker.recognize(dataUrl, {}, { blocks: true });
       await worker.terminate();
       const text = (data && data.text) || "";
       if (!text.trim()) {
         $("ocrnote").textContent = "Couldn't read this image — try a sharper, straight-on photo, or type the fields.";
         return;
       }
-      fillForm(parseCard(text));
+      fillForm(parseCardData(data));
       $("ocrnote").textContent = "Parsed — check & fix the fields below.";
     } catch (e) {
       $("ocrnote").textContent = "OCR error: " + (e && e.message ? e.message : e) + " — type the fields.";
