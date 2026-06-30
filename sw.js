@@ -1,6 +1,6 @@
 // Service worker: cache the app shell + OCR assets so the app opens with zero
 // network. Capture must work fully offline; only "Sync now" needs the LAN.
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL = "shell-" + VERSION;
 
 const SHELL_FILES = [

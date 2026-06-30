@@ -90,22 +90,35 @@
 
   async function runOCR(dataUrl) {
     if (window.__noOCR || !window.Tesseract) {
-      $("ocrnote").textContent = "OCR unavailable offline (first load needs network once). Type the fields.";
+      $("ocrnote").textContent = "OCR engine didn't load. Reopen the app once online, then retry. You can still type the fields.";
       return;
     }
-    $("ocrnote").textContent = "Reading card…";
+    // Absolute URLs: Tesseract resolves these inside its Web Worker (whose own
+    // base is /vendor/), so relative paths would double to /vendor/vendor/.
+    const base = new URL("vendor/", location.href).href;
+    $("ocrnote").textContent = "Reading card… 0%";
     try {
       const worker = await Tesseract.createWorker("eng", 1, {
-        workerPath: "vendor/worker.min.js",
-        corePath: "vendor/",
-        langPath: "vendor/",
+        workerPath: base + "worker.min.js",
+        corePath: base,
+        langPath: base,
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            $("ocrnote").textContent = "Reading card… " + Math.round((m.progress || 0) * 100) + "%";
+          }
+        },
       });
       const { data } = await worker.recognize(dataUrl);
       await worker.terminate();
-      fillForm(parseCard(data.text || ""));
-      $("ocrnote").textContent = "Parsed — check & fix below.";
+      const text = (data && data.text) || "";
+      if (!text.trim()) {
+        $("ocrnote").textContent = "Couldn't read this image — try a sharper, straight-on photo, or type the fields.";
+        return;
+      }
+      fillForm(parseCard(text));
+      $("ocrnote").textContent = "Parsed — check & fix the fields below.";
     } catch (e) {
-      $("ocrnote").textContent = "OCR failed — type the fields. (" + e.message + ")";
+      $("ocrnote").textContent = "OCR error: " + (e && e.message ? e.message : e) + " — type the fields.";
     }
   }
 
