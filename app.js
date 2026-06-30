@@ -163,14 +163,19 @@
   };
 
   // settings
-  $("btnSettings").onclick = () => { $("agentUrl").value = localStorage.getItem("agentUrl") || ""; show("settings"); };
-  $("btnBack").onclick = () => show("home");
-  $("btnSaveSettings").onclick = () => {
-    localStorage.setItem("agentUrl", $("agentUrl").value.trim());
-    show("home");
+  $("btnSettings").onclick = () => {
+    $("agentUrl").value = localStorage.getItem("agentUrl") || "";
+    $("agentToken").value = localStorage.getItem("agentToken") || "";
+    show("settings");
   };
-  $("btnTest").onclick = async () => {
+  $("btnBack").onclick = () => show("home");
+  function saveSettings() {
     localStorage.setItem("agentUrl", $("agentUrl").value.trim());
+    localStorage.setItem("agentToken", $("agentToken").value.trim());
+  }
+  $("btnSaveSettings").onclick = () => { saveSettings(); show("home"); };
+  $("btnTest").onclick = async () => {
+    saveSettings();
     $("testResult").textContent = "Testing…";
     try {
       const h = await SYNC.health();

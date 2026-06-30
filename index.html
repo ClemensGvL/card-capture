@@ -80,9 +80,12 @@
 
   <!-- SETTINGS -->
   <section id="settings" class="screen">
-    <label>Sync agent URL (your laptop, HTTPS)</label>
-    <input id="agentUrl" placeholder="https://your-laptop.local:8765" inputmode="url" autocapitalize="off">
-    <p class="hint">Set this to the address your laptop sync agent prints on startup. Used only when you tap “Sync now”.</p>
+    <label>Sync agent URL (your laptop)</label>
+    <input id="agentUrl" placeholder="https://your-laptop.tailnet.ts.net" inputmode="url" autocapitalize="off">
+    <p class="hint">Your laptop's Tailscale address (works from any network) or its LAN address at home. Used only when you tap “Sync now”.</p>
+    <label>Sync token</label>
+    <input id="agentToken" placeholder="paste the SYNC_TOKEN from your .env" autocapitalize="off">
+    <p class="hint">Must match SYNC_TOKEN in the agent's .env. Stored only on this phone.</p>
     <div class="stack" style="margin-top:18px">
       <button class="primary" id="btnSaveSettings">Save</button>
       <button class="ghost" id="btnTest">Test connection</button>

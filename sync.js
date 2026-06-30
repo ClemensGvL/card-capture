@@ -2,6 +2,13 @@
 // On a confirmed per-item merge, the item is removed from the queue.
 const SYNC = (() => {
   function agentUrl() { return (localStorage.getItem("agentUrl") || "").replace(/\/+$/, ""); }
+  function token() { return localStorage.getItem("agentToken") || ""; }
+  function headers(extra) {
+    const h = Object.assign({}, extra || {});
+    const t = token();
+    if (t) h["X-Sync-Token"] = t;
+    return h;
+  }
 
   function toPayload(rec) {
     return {
@@ -26,7 +33,7 @@ const SYNC = (() => {
     async health() {
       const base = agentUrl();
       if (!base) throw new Error("No agent URL set (Settings).");
-      const r = await fetch(base + "/health", { method: "GET" });
+      const r = await fetch(base + "/health", { method: "GET", headers: headers() });
       if (!r.ok) throw new Error("Agent returned " + r.status);
       return r.json();
     },
@@ -37,7 +44,7 @@ const SYNC = (() => {
       if (!items.length) return { synced: 0, remaining: 0 };
       const r = await fetch(base + "/sync", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers({ "Content-Type": "application/json" }),
         body: JSON.stringify({ captures: items.map(toPayload) }),
       });
       if (!r.ok) {
