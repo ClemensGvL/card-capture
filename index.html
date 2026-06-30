@@ -33,6 +33,10 @@
   #preview { width:100%; border-radius:12px; margin-top:12px; display:none; }
   .ocrnote { font-size:13px; color:var(--muted); min-height:18px; margin-top:8px; }
   .settings-link { color:var(--muted); font-size:14px; text-decoration:underline; background:none; width:auto; padding:6px 0; }
+  .checkrow { display:flex; align-items:center; gap:10px; margin:18px 0 4px; }
+  .checkrow input { width:22px; height:22px; flex:0 0 auto; }
+  .checkrow span { font-size:16px; color:var(--txt); }
+  #emailfields.hidden { display:none; }
 </style>
 </head>
 <body>
@@ -72,6 +76,15 @@
     <label>Context dump (10s — what they do, why they matter)</label>
     <textarea id="f_context" placeholder="Talk fast — anything that helps the name stick."></textarea>
     <div class="row"><div><label>Event / tag (optional)</label><input id="f_event"></div></div>
+
+    <label class="checkrow"><input type="checkbox" id="f_sendemail" checked><span>Send a follow-up email</span></label>
+    <div id="emailfields">
+      <label>Subject</label><input id="f_subject">
+      <label>Email to them (edit freely)</label>
+      <textarea id="f_emailbody" style="min-height:220px"></textarea>
+      <button class="ghost" id="btnResetEmail" type="button" style="margin-top:8px">↺ Reset to template</button>
+    </div>
+
     <div class="stack" style="margin-top:18px">
       <button class="primary" id="btnConfirm">✓ Save to queue</button>
       <button class="ghost" id="btnCancel">Cancel</button>
@@ -86,6 +99,11 @@
     <label>GitHub token</label>
     <input id="ghToken" placeholder="github_pat_… (fine-grained, this repo only)" autocapitalize="off">
     <p class="hint">A fine-grained token with Contents: read & write on that repo only. Stored on this phone alone — never in the app. Revoke it on GitHub if you lose the phone.</p>
+    <label>Your signature (your details)</label>
+    <textarea id="setSignature" style="min-height:120px"></textarea>
+    <label>Email template</label>
+    <textarea id="setTemplate" style="min-height:170px"></textarea>
+    <p class="hint">Use <b>{first}</b> for their first name and <b>{met}</b> for where you met. Your signature is added below it automatically.</p>
     <div class="stack" style="margin-top:18px">
       <button class="primary" id="btnSaveSettings">Save</button>
       <button class="ghost" id="btnTest">Test connection</button>

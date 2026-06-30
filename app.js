@@ -18,6 +18,43 @@
     b.classList.toggle("zero", n === 0);
   }
 
+  // --- follow-up email --------------------------------------------------------
+  const DEFAULT_SIGNATURE =
+    "Clemens Graf von Luckner\n+12027250245\n+4917691331030 (WhatsApp)\nclemens.luckner@gmail.com";
+  const DEFAULT_TEMPLATE =
+    "Hi {first},\n\n" +
+    "Great meeting you at {met}. As mentioned I often don't carry business cards " +
+    "on me (having started my career during Covid, it never became a habit).\n\n" +
+    "Anyways, here are my details, would love to keep in touch.";
+
+  const getTemplate = () => localStorage.getItem("emailTemplate") || DEFAULT_TEMPLATE;
+  const getSignature = () => localStorage.getItem("emailSignature") || DEFAULT_SIGNATURE;
+
+  let emailEdited = false, subjectEdited = false;
+
+  function buildBody(first, met) {
+    const body = getTemplate()
+      .replace(/\{first\}/g, first || "there")
+      .replace(/\{met\}/g, met || "[where we met]");
+    return body + "\n\n" + getSignature();
+  }
+  function buildSubject(met) {
+    return met ? ("Great meeting you at " + met) : "Great meeting you";
+  }
+  // Regenerate the draft from the current fields, unless the user has hand-edited.
+  function refreshEmailDraft() {
+    const first = ($("f_name").value.trim().split(/\s+/)[0]) || "";
+    const met = $("f_howmet").value.trim();
+    if (!subjectEdited) $("f_subject").value = buildSubject(met);
+    if (!emailEdited) $("f_emailbody").value = buildBody(first, met);
+  }
+  function openMail(toEmail, subject, body) {
+    const url = "mailto:" + (toEmail || "") +
+      "?subject=" + encodeURIComponent(subject || "") +
+      "&body=" + encodeURIComponent(body || "");
+    window.location.href = url;
+  }
+
   // --- business-card parser ---------------------------------------------------
   // Org / title keyword sets, reused for name-exclusion and field-picking.
   const ORG_RE = /(inc\.?|llp|llc|gmbh|ltd\.?|group|bank|university|capital|partners|corp\.?|company|fund|associates|department|ministry|affairs|treasury|division|office|institute|agency|council|bureau|holdings|ventures|foundation|trust)/i;
@@ -117,13 +154,18 @@
     $("f_phone").value = p.phone || "";
     $("f_title").value = p.title || "";
     $("f_company").value = p.company || "";
+    refreshEmailDraft();   // OCR'd the name — update the greeting
   }
 
   function clearForm() {
-    ["f_name","f_last","f_email","f_phone","f_title","f_company","f_howmet","f_context","f_event"].forEach((id) => ($(id).value = ""));
+    ["f_name","f_last","f_email","f_phone","f_title","f_company","f_howmet","f_context","f_event","f_subject","f_emailbody"].forEach((id) => ($(id).value = ""));
     $("preview").style.display = "none";
     $("ocrnote").textContent = "";
     currentImageDataUrl = null;
+    emailEdited = false; subjectEdited = false;
+    $("f_sendemail").checked = true;
+    $("emailfields").classList.remove("hidden");
+    refreshEmailDraft();
   }
 
   async function runOCR(dataUrl) {
@@ -193,12 +235,28 @@
       capturedAt: new Date().toISOString(),
       cardImageDataUrl: currentImageDataUrl,
     };
+    // Capture the email intent before clearForm wipes the fields.
+    const wantEmail = $("f_sendemail").checked;
+    const mailSubject = $("f_subject").value;
+    const mailBody = $("f_emailbody").value;
+
     await DB.add(rec);
     await refreshBadge();
     clearForm();
     show("home");
-    $("syncStatus").textContent = "Saved to queue. Sync when you're near your laptop.";
+    $("syncStatus").textContent = wantEmail
+      ? "Saved. Opening your email draft…"
+      : "Saved to queue. Sync when you have signal.";
+    if (wantEmail) openMail(email, mailSubject, mailBody);
   };
+
+  // Live-update the draft as you fill name / where-met, until you hand-edit it.
+  $("f_howmet").addEventListener("input", refreshEmailDraft);
+  $("f_name").addEventListener("input", refreshEmailDraft);
+  $("f_subject").addEventListener("input", () => { subjectEdited = true; });
+  $("f_emailbody").addEventListener("input", () => { emailEdited = true; });
+  $("btnResetEmail").onclick = () => { emailEdited = false; subjectEdited = false; refreshEmailDraft(); };
+  $("f_sendemail").onchange = () => $("emailfields").classList.toggle("hidden", !$("f_sendemail").checked);
 
   $("btnCancel").onclick = () => { clearForm(); show("home"); };
 
@@ -217,12 +275,16 @@
   $("btnSettings").onclick = () => {
     $("ghRepo").value = localStorage.getItem("ghRepo") || "ClemensGvL/card-captures-data";
     $("ghToken").value = localStorage.getItem("ghToken") || "";
+    $("setSignature").value = getSignature();
+    $("setTemplate").value = getTemplate();
     show("settings");
   };
   $("btnBack").onclick = () => show("home");
   function saveSettings() {
     localStorage.setItem("ghRepo", $("ghRepo").value.trim());
     localStorage.setItem("ghToken", $("ghToken").value.trim());
+    localStorage.setItem("emailSignature", $("setSignature").value);
+    localStorage.setItem("emailTemplate", $("setTemplate").value);
   }
   $("btnSaveSettings").onclick = () => { saveSettings(); show("home"); };
   $("btnTest").onclick = async () => {
