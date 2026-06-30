@@ -101,7 +101,12 @@
 <script src="app.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(()=>{});
+    // Auto-reload once when a newer service worker takes control.
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloaded) return; reloaded = true; location.reload();
+    });
+    navigator.serviceWorker.register("sw.js").then((reg) => { reg.update(); }).catch(()=>{});
   }
 </script>
 </body>
