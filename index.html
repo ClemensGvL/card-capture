@@ -37,6 +37,10 @@
   .checkrow input { width:22px; height:22px; flex:0 0 auto; }
   .checkrow span { font-size:16px; color:var(--txt); }
   #emailfields.hidden { display:none; }
+  .faceframe { width:100%; aspect-ratio:1/1; background:#0a0d12; border:1px solid var(--line); border-radius:16px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .faceframe img { width:100%; height:100%; object-fit:contain; }
+  #rvName { margin:14px 0 2px; font-size:26px; }
+  #rvGrades button { font-weight:600; }
 </style>
 </head>
 <body>
@@ -52,6 +56,7 @@
       <button class="primary" id="btnCard">📷 Capture a card</button>
       <button class="ghost" id="btnNoCard">⌨️ No card (paste / type)</button>
       <button class="ghost" id="btnSync">🔄 Sync now</button>
+      <button class="ghost" id="btnReview">🧠 Learn names</button>
       <p class="hint" id="syncStatus"></p>
       <button class="settings-link" id="btnSettings">Settings</button>
     </div>
@@ -111,11 +116,46 @@
       <button class="ghost" id="btnBack">Back</button>
     </div>
   </section>
+
+  <!-- REVIEW (face-first name learner) -->
+  <section id="review" class="screen">
+    <div id="rvHome">
+      <h2 style="margin:6px 0 2px">Learn names</h2>
+      <p class="hint" id="rvStatus"></p>
+      <div class="stack" style="margin-top:16px">
+        <button class="primary" id="rvStart">▶︎ Start review</button>
+        <button class="ghost" id="rvSync">⤓ Update faces &amp; roster</button>
+        <button class="ghost" id="rvBack">Back</button>
+      </div>
+    </div>
+    <div id="rvCard" style="display:none">
+      <div class="faceframe"><img id="rvFace" alt="face"></div>
+      <p class="hint" id="rvPrompt">Who is this? What do they do? How did you meet?</p>
+      <div id="rvAnswer" style="display:none">
+        <h2 id="rvName"></h2>
+        <p id="rvSub"></p>
+        <p class="hint" id="rvMet"></p>
+        <p id="rvNote"></p>
+      </div>
+      <div class="stack" style="margin-top:14px">
+        <button class="primary" id="rvShow">Show</button>
+        <div class="row" id="rvGrades" style="display:none">
+          <button class="ghost" data-g="again">Again</button>
+          <button class="ghost" data-g="hard">Hard</button>
+          <button class="ghost" data-g="good">Good</button>
+          <button class="ghost" data-g="easy">Easy</button>
+        </div>
+        <button class="settings-link" id="rvEnd">End session</button>
+      </div>
+      <p class="hint" id="rvProgress"></p>
+    </div>
+  </section>
 </main>
 
 <script src="vendor/tesseract.min.js" onerror="window.__noOCR=true"></script>
 <script src="db.js"></script>
 <script src="sync.js"></script>
+<script src="review.js"></script>
 <script src="app.js"></script>
 <script>
   if ("serviceWorker" in navigator) {

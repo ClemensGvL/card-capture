@@ -1,7 +1,7 @@
 // Capture UI: camera -> offline OCR -> one-screen confirm -> IndexedDB queue.
 (() => {
   const $ = (id) => document.getElementById(id);
-  const screens = ["home", "confirm", "settings"];
+  const screens = ["home", "confirm", "settings", "review"];
   function show(name) {
     screens.forEach((s) => $(s).classList.toggle("active", s === name));
   }
@@ -259,6 +259,12 @@
   $("f_sendemail").onchange = () => $("emailfields").classList.toggle("hidden", !$("f_sendemail").checked);
 
   $("btnCancel").onclick = () => { clearForm(); show("home"); };
+
+  // review (face-first name learner) — logic lives in review.js
+  if (typeof REVIEW !== "undefined") {
+    REVIEW.init(show);
+    $("btnReview").onclick = () => { show("review"); REVIEW.open(); };
+  }
 
   $("btnSync").onclick = async () => {
     $("syncStatus").textContent = "Syncing…";
