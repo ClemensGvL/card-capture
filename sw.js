@@ -4,7 +4,7 @@
 //    cache when offline.
 //  - Big OCR assets under vendor/ (wasm, traineddata, core, worker): CACHE-FIRST,
 //    so capture works fully offline once they've been fetched.
-const VERSION = "v11";
+const VERSION = "v12";
 const SHELL = "shell-" + VERSION;
 
 const PRECACHE = [
