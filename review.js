@@ -55,6 +55,21 @@ const REVIEW = (() => {
     if (r.status !== 200) throw new Error("GitHub " + r.status + " for " + path);
     return asBlob ? await r.blob() : await r.text();
   }
+  // Write a small JSON file to the repo (create or update). Used to flag a bad photo.
+  async function ghPutJson(path, obj, message) {
+    const t = ghToken();
+    if (!t) throw new Error("No GitHub token set (Settings).");
+    const url = `https://api.github.com/repos/${ghRepo()}/contents/${path}`;
+    const hdr = { "Authorization": "Bearer " + t, "Accept": "application/vnd.github+json" };
+    let sha = null;
+    const g = await fetch(url, { headers: hdr });
+    if (g.status === 200) sha = (await g.json()).sha;
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(obj, null, 2))));
+    const body = sha ? { message, content, sha } : { message, content };
+    const r = await fetch(url, { method: "PUT", headers: Object.assign(hdr, { "Content-Type": "application/json" }), body: JSON.stringify(body) });
+    if (r.status !== 200 && r.status !== 201) throw new Error("GitHub " + r.status);
+  }
+  const initials = (name) => { const w = (name || "?").trim().split(/\s+/); return (((w[0] || "")[0] || "") + ((w[w.length - 1] || "")[0] || "")).toUpperCase(); };
 
   // --- SM-2 (transparent; FSRS can replace this one function later) ---------
   const today = () => new Date().toISOString().slice(0, 10);
@@ -130,13 +145,32 @@ const REVIEW = (() => {
 
   async function showFace() {
     const blob = cur.photo ? await RDB.face(cur.photo) : null;
-    const img = $("rvFace");
-    if (blob) { img.src = URL.createObjectURL(blob); img.style.display = "block"; }
-    else { img.removeAttribute("src"); img.style.display = "none"; }
+    const img = $("rvFace"), ini = $("rvInitials");
+    if (blob) { img.src = URL.createObjectURL(blob); img.style.display = "block"; ini.style.display = "none"; }
+    else { img.removeAttribute("src"); img.style.display = "none"; ini.textContent = initials(cur.name); ini.style.display = "flex"; }
     $("rvAnswer").style.display = "none";
     $("rvShow").style.display = "block";
     $("rvGrades").style.display = "none";
+    $("rvWrong").style.display = cur.photo ? "block" : "none";
     $("rvProgress").textContent = `${queue.length} left this session`;
+  }
+
+  // Flag the current photo as unrepresentative; the laptop re-finds one next pass.
+  async function rejectPhoto() {
+    if (!cur) return;
+    const safe = cur.id.replace(/[^a-z0-9._@-]/gi, "_");
+    $("rvProgress").textContent = "Flagging photo…";
+    try {
+      await ghPutJson(`review/rejections/${safe}.json`,
+        { id: cur.id, name: cur.name, rejected_file: cur.photo || "", at: today() },
+        `reject photo: ${cur.name}`);
+    } catch (e) {
+      $("rvProgress").textContent = "Couldn't flag (" + e.message + ").";
+      return;
+    }
+    cur.photo = null;                     // fall back to initials for this session
+    $("rvProgress").textContent = "Flagged — a better photo will be fetched on next update.";
+    setTimeout(() => next(), 800);
   }
 
   function reveal() {
@@ -183,6 +217,7 @@ const REVIEW = (() => {
       $("rvSync").onclick = () => sync();
       $("rvStart").onclick = () => start();
       $("rvShow").onclick = () => reveal();
+      $("rvWrong").onclick = () => rejectPhoto();
       $("rvGrades").querySelectorAll("button").forEach((b) => (b.onclick = () => grade(b.dataset.g)));
     },
     async open() {

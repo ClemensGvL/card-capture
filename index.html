@@ -39,8 +39,10 @@
   #emailfields.hidden { display:none; }
   .faceframe { width:100%; aspect-ratio:1/1; background:#0a0d12; border:1px solid var(--line); border-radius:16px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
   .faceframe img { width:100%; height:100%; object-fit:contain; }
+  #rvInitials { width:100%; height:100%; align-items:center; justify-content:center; font-size:96px; font-weight:700; color:var(--muted); background:var(--card); }
   #rvName { margin:14px 0 2px; font-size:26px; }
   #rvGrades button { font-weight:600; }
+  #rvWrong { color:var(--muted); font-size:14px; }
 </style>
 </head>
 <body>
@@ -129,7 +131,7 @@
       </div>
     </div>
     <div id="rvCard" style="display:none">
-      <div class="faceframe"><img id="rvFace" alt="face"></div>
+      <div class="faceframe"><img id="rvFace" alt="face"><div id="rvInitials" style="display:none"></div></div>
       <p class="hint" id="rvPrompt">Who is this? What do they do? How did you meet?</p>
       <div id="rvAnswer" style="display:none">
         <h2 id="rvName"></h2>
@@ -145,6 +147,7 @@
           <button class="ghost" data-g="good">Good</button>
           <button class="ghost" data-g="easy">Easy</button>
         </div>
+        <button class="settings-link" id="rvWrong" style="display:none">🔎 Wrong photo — find a better one</button>
         <button class="settings-link" id="rvEnd">End session</button>
       </div>
       <p class="hint" id="rvProgress"></p>
