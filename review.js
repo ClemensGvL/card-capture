@@ -105,6 +105,29 @@ const REVIEW = (() => {
     return (due.length ? due : ppl).map((p) => p.id);   // nothing due -> review all faced
   }
 
+  // --- subsampling: filter the session by keywords -------------------------
+  // Searches all the person's text. Comma = OR, space = AND:
+  //   "IMF, World Bank" -> either;  "IMF debt" -> IMF and debt.
+  const personText = (p) =>
+    [p.name, p.org, p.title, p.met_where, p.event, p.tags, p.context_note]
+      .filter(Boolean).join(" ").toLowerCase();
+  function matchesQuery(text, query) {
+    const groups = query.toLowerCase().split(",").map((g) => g.trim()).filter(Boolean);
+    if (!groups.length) return true;
+    return groups.some((g) => g.split(/\s+/).every((term) => text.includes(term)));
+  }
+  function filteredPeople() {
+    const q = ($("rvFilter").value || "").trim();
+    if (!q) return null;                       // null = no filter -> due-based session
+    return roster.filter((p) => matchesQuery(personText(p), q));
+  }
+  const facedFirst = (list) => [...list.filter((p) => p.photo), ...list.filter((p) => !p.photo)];
+  function updateFilterCount() {
+    const f = filteredPeople();
+    if (!f) { $("rvFilterCount").textContent = ""; return; }
+    $("rvFilterCount").textContent = `${f.length} match · ${f.filter((p) => p.photo).length} with photo`;
+  }
+
   function personById(id) { return roster.find((p) => p.id === id); }
 
   async function renderHome(msg) {
@@ -202,8 +225,14 @@ const REVIEW = (() => {
 
   async function start() {
     if (!roster.length) await loadRosterIntoMemory();
-    if (!faced().length) { await renderHome("No faces yet. Tap “Update faces & roster”."); return; }
-    queue = await dueIds();
+    const f = filteredPeople();
+    if (f) {                                   // subsampled session (faces first, then initials)
+      if (!f.length) { await renderHome("No one matches that filter."); return; }
+      queue = facedFirst(f).map((p) => p.id);
+    } else {                                    // default: due faces
+      if (!faced().length) { await renderHome("No faces yet. Tap “Update faces & roster”."); return; }
+      queue = await dueIds();
+    }
     $("rvHome").style.display = "none";
     $("rvCard").style.display = "block";
     await next();
@@ -218,11 +247,13 @@ const REVIEW = (() => {
       $("rvStart").onclick = () => start();
       $("rvShow").onclick = () => reveal();
       $("rvWrong").onclick = () => rejectPhoto();
+      $("rvFilter").oninput = () => updateFilterCount();
       $("rvGrades").querySelectorAll("button").forEach((b) => (b.onclick = () => grade(b.dataset.g)));
     },
     async open() {
       await loadRosterIntoMemory();
       await renderHome(roster.length ? "" : "First time: tap “Update faces & roster”.");
+      updateFilterCount();
     },
   };
 })();
