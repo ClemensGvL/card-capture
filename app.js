@@ -1,7 +1,7 @@
 // Capture UI: camera -> offline OCR -> one-screen confirm -> IndexedDB queue.
 (() => {
   const $ = (id) => document.getElementById(id);
-  const screens = ["home", "confirm", "settings", "review"];
+  const screens = ["home", "confirm", "settings", "review", "faces"];
   function show(name) {
     screens.forEach((s) => $(s).classList.toggle("active", s === name));
   }
@@ -264,6 +264,12 @@
   if (typeof REVIEW !== "undefined") {
     REVIEW.init(show);
     $("btnReview").onclick = () => { show("review"); REVIEW.open(); };
+  }
+
+  // faces (personal acquaintances: crop + name + context) — logic lives in faces.js
+  if (typeof FACES !== "undefined") {
+    FACES.init(show, async (msg) => { await refreshBadge(); $("syncStatus").textContent = msg || ""; });
+    $("btnFace").onclick = () => { show("faces"); FACES.open(); };
   }
 
   $("btnSync").onclick = async () => {

@@ -30,6 +30,16 @@ const SYNC = (() => {
     throw new Error(`GitHub ${r.status}: ${detail.slice(0, 140)}`);
   }
 
+  // Personal faces (from faces.js) go under faces/, never under captures/, so
+  // the laptop writes them to their own sheet.
+  function faceMetaOf(rec) {
+    return {
+      id: rec.id, name: rec.name || "", context_note: rec.context_note || "",
+      captured_at: rec.capturedAt || "",
+      face_image: rec.faceImageDataUrl ? `faces/img/${rec.id}.jpg` : "",
+    };
+  }
+
   function metaOf(rec) {
     return {
       id: rec.id, name: rec.name || "", last_name: rec.last_name || "",
@@ -54,6 +64,16 @@ const SYNC = (() => {
       if (!items.length) return { synced: 0, remaining: 0 };
       let synced = 0;
       for (const rec of items) {
+        if (rec.kind === "face") {
+          const b64 = rec.faceImageDataUrl.includes(",")
+            ? rec.faceImageDataUrl.split(",", 2)[1] : rec.faceImageDataUrl;
+          await putFile(`faces/img/${rec.id}.jpg`, b64, `face image ${rec.id}`);
+          await putFile(`faces/${rec.capturedAt || ""}-${rec.id}.json`,
+            b64utf8(JSON.stringify(faceMetaOf(rec), null, 2)), `face ${rec.id}`);
+          await DB.remove(rec.id);
+          synced++;
+          continue;
+        }
         // Image first (so the JSON's reference is valid once present).
         if (rec.cardImageDataUrl) {
           const b64 = rec.cardImageDataUrl.includes(",")

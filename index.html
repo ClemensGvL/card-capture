@@ -43,6 +43,11 @@
   #rvName { margin:14px 0 2px; font-size:26px; }
   #rvGrades button { font-weight:600; }
   #rvWrong { color:var(--muted); font-size:14px; }
+  /* faces: square crop viewport (personal name-learner) */
+  .cropframe { position:relative; width:100%; aspect-ratio:1/1; background:#0a0d12; border:1px solid var(--line); border-radius:16px; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; }
+  .cropframe canvas { position:absolute; left:0; top:0; transform-origin:0 0; display:block; pointer-events:none; }
+  #fcZoom { width:100%; margin:14px 0 4px; }
+  #fcPreview { width:160px; height:160px; border-radius:16px; border:1px solid var(--line); display:block; margin:0 auto 6px; object-fit:cover; }
 </style>
 </head>
 <body>
@@ -59,6 +64,7 @@
       <button class="ghost" id="btnNoCard">⌨️ No card (paste / type)</button>
       <button class="ghost" id="btnSync">🔄 Sync now</button>
       <button class="ghost" id="btnReview">🧠 Learn names</button>
+      <button class="ghost" id="btnFace">👤 Add a face (personal)</button>
       <p class="hint" id="syncStatus"></p>
       <button class="settings-link" id="btnSettings">Settings</button>
     </div>
@@ -157,12 +163,40 @@
       <p class="hint" id="rvProgress"></p>
     </div>
   </section>
+
+  <!-- FACES (personal acquaintances: crop a face, name it, queue it) -->
+  <section id="faces" class="screen">
+    <input id="fcFile" type="file" accept="image/*" style="display:none">
+    <div id="fcCrop">
+      <h2 style="margin:6px 0 2px">Add a face</h2>
+      <p class="hint">Pinch to zoom, drag to move. The square is what the quiz will show.</p>
+      <div class="cropframe" id="fcFrame"><canvas id="fcImg" width="1" height="1"></canvas></div>
+      <input type="range" id="fcZoom" min="0" max="1000" value="0">
+      <div class="stack" style="margin-top:12px">
+        <button class="primary" id="fcUse">✓ Use this crop</button>
+        <button class="ghost" id="fcRetake">Choose another photo</button>
+        <button class="ghost" id="fcCancel1">Cancel</button>
+      </div>
+    </div>
+    <div id="fcForm" style="display:none">
+      <img id="fcPreview" alt="face">
+      <label>Name</label><input id="fc_name" placeholder="First name is enough">
+      <label>Context (what makes the name stick)</label>
+      <textarea id="fc_context" placeholder="Where you know them from, who introduced you, anything memorable."></textarea>
+      <div class="stack" style="margin-top:18px">
+        <button class="primary" id="fcSave">✓ Save to queue</button>
+        <button class="ghost" id="fcBack">← Re-crop</button>
+        <button class="ghost" id="fcCancel2">Cancel</button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <script src="vendor/tesseract.min.js" onerror="window.__noOCR=true"></script>
 <script src="db.js"></script>
 <script src="sync.js"></script>
 <script src="review.js"></script>
+<script src="faces.js"></script>
 <script src="app.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
